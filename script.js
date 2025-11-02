@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // --- CONFIGURATION ---
     // Remplacez par l'URL de votre script Google Apps (la même que dans le code ESP32)
-    const googleScriptURL = 'https://script.google.com/macros/s/AKfycbwYi7BDvXZ9QHaI7HhhcaV3JFFZ0fYq0BZYPkwIZFTII0tVM-ccwmx1EqM_XoKpPVoNxQ/exec';
+    const googleScriptURL = 'https://script.google.com/macros/s/AKfycbz5nODXrc7NftBi9tJn20nygxf3hzOa6zBE_0uYL32luHCIeLzRT4f8rCUwb3Si2k9sMA/exec';
     
     // Intervalle de tolérance en secondes pour synchroniser les données
     const toleranceSeconds = 10;
@@ -129,5 +129,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Met à jour les données toutes les 30 secondes
     setInterval(fetchDataAndDisplay, 30000); 
+
 
 });
