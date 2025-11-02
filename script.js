@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     
     // --- CONFIGURATION (Basée sur ton fichier) ---
-    const googleScriptURL = 'https://script.google.com/macros/s/AKfycbwFgBY3Xwc19JqN3kcGyTXjkO3-LeSnG50b5eTXAUidLPTarRuqGM0JRs2QuwNffU-tkA/exec';
+    const googleScriptURL = 'https://script.google.com/macros/s/AKfycbyc-T8xUKDFvKw121YJOLGWMgxg985eqx9KPmSzC4dqe9qI47Nxnqx3vFvYV4QjGTtQTg/exec';
     const toleranceSeconds = 10;
 
     // --- ÉLÉMENTS DE LA PAGE ---
@@ -154,3 +154,4 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(fetchDataAndDisplay, 30000); 
 
 });
+
