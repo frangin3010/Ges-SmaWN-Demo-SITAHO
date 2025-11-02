@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ges'Eau - Monitoring Ges'SMAWN</title>
+    <!-- AJOUT : On ajoute la bibliothèque Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* CSS simple pour rendre la page jolie */
         body { font-family: Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
@@ -11,6 +13,7 @@
         .logo { max-width: 150px; margin-bottom: 10px; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         h1, h2 { color: #005a87; }
+        .section { margin-top: 40px; } /* AJOUT pour espacer les sections */
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { padding: 12px; border: 1px solid #ddd; text-align: center; }
         th { background-color: #005a87; color: white; }
@@ -22,21 +25,27 @@
 
     <div class="container">
         <header>
-            <!-- Remplacez 'URL_DE_VOTRE_LOGO' par un lien vers votre logo -->
+            <!-- Ton logo local est conservé -->
             <img src="logo.png" alt="Logo Ges'Eau" class="logo">
             <h1>Tableau de Bord Ges'SMAWN</h1>
             <h2>Suivi des Données de Mesure</h2>
         </header>
 
-        <div id="data-table-container">
+        <!-- AJOUT : Nouvelle section pour le graphique -->
+        <div class="section">
+            <h2>Évolution des Volumes</h2>
+            <canvas id="volumeChart"></canvas> <!-- C'est ici que le graphique sera dessiné -->
+        </div>
+
+        <div class="section" id="data-table-container">
             <h2>Tableau des Données Synchronisées</h2>
-            <p id="status">Chargement des données...</p>
             <table>
                 <thead>
                     <tr>
-                        <th>Timestamp (Heure)</th>
-                        <th>Volume GesBox 1 (L)</th>
-                        <th>Volume GesBox 2 (L)</th>
+                        <!-- MODIFICATION : Titre de colonne plus précis -->
+                        <th>Date et Heure (UTC)</th>
+                        <th>Volume Cumulé GesBox 1 (L)</th>
+                        <th>Volume Cumulé GesBox 2 (L)</th>
                         <th>Différence (L)</th>
                         <th>Différence (%)</th>
                     </tr>
@@ -46,11 +55,11 @@
                 </tbody>
             </table>
         </div>
+        <p id="status">Chargement des données...</p>
     </div>
 
     <!-- Notre script JavaScript qui va tout gérer -->
     <script src="script.js"></script>
 
 </body>
-
 </html>
