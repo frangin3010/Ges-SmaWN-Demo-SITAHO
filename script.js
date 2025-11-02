@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // --- CONFIGURATION ---
     // URL de votre script Google Apps (correcte, celle que tu as fournie)
-    const googleScriptURL = 'https://script.google.com/macros/s/AKfycbz5nODXrc7NftBi9tJn20nygxf3hzOa6zBE_0uYL32luHCIeLzRT4f8rCUwb3Si2k9sMA/exec';
+    const googleScriptURL = 'https://script.google.com/macros/s/AKfycbwFgBY3Xwc19JqN3kcGyTXjkO3-LeSnG50b5eTXAUidLPTarRuqGM0JRs2QuwNffU-tkA/exec';
     
     // Intervalle de tolérance en secondes pour synchroniser les données
     const toleranceSeconds = 10;
@@ -140,3 +140,4 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(fetchDataAndDisplay, 30000); 
 
 });
+
