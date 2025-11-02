@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     
     // --- CONFIGURATION ---
-    // Remplacez par l'URL de votre script Google Apps (la même que dans le code ESP32)
+    // URL de votre script Google Apps (correcte, celle que tu as fournie)
     const googleScriptURL = 'https://script.google.com/macros/s/AKfycbz5nODXrc7NftBi9tJn20nygxf3hzOa6zBE_0uYL32luHCIeLzRT4f8rCUwb3Si2k9sMA/exec';
     
     // Intervalle de tolérance en secondes pour synchroniser les données
@@ -34,7 +34,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // 4. Afficher les données dans le tableau
             displayDataInTable(synchronizedData);
 
-            statusText.textContent = `Dernière mise à jour : ${new Date().toLocaleTimeString()}`;
+            // --- MODIFICATION : Met à jour le statut avec la date et l'heure complètes ---
+            const options = { dateStyle: 'long', timeStyle: 'medium' };
+            statusText.textContent = `Dernière mise à jour : ${new Date().toLocaleString('fr-FR', options)}`;
 
         } catch (error) {
             console.error('Erreur lors de la récupération ou du traitement des données:', error);
@@ -62,7 +64,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         volume2: point2.volume
                     });
                     foundMatch = true;
-                    // On ne casse pas la boucle pour potentiellement trouver une correspondance plus proche, mais on avance le pointeur
                     // Pour simplifier, on prend la première correspondance et on continue
                     break; 
                 }
@@ -107,11 +108,19 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Convertit le timestamp en une date lisible
             const date = new Date(item.timestamp * 1000);
-            const formattedTime = date.toLocaleTimeString('fr-FR');
 
+            // --- MODIFICATION POUR AFFICHER LA DATE ET L'HEURE COMPLÈTES DANS LE TABLEAU ---
+            const options = { 
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit', second: '2-digit',
+              hour12: false, // Format 24h
+              timeZone: 'UTC' // Important pour afficher l'heure UTC comme référence
+            };
+            const formattedTime = date.toLocaleString('fr-FR', options);
+            // --- FIN DE LA MODIFICATION ---
 
             row.innerHTML = `
-                <td>${formattedTime}</td>
+                <td>${formattedTime} (UTC)</td>
                 <td>${item.volume1.toFixed(3)}</td>
                 <td>${item.volume2 !== null ? item.volume2.toFixed(3) : '---'}</td>
                 <td>${diffVolume}</td>
@@ -129,6 +138,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Met à jour les données toutes les 30 secondes
     setInterval(fetchDataAndDisplay, 30000); 
-
 
 });
