@@ -23,7 +23,7 @@
     <div class="container">
         <header>
             <!-- Remplacez 'URL_DE_VOTRE_LOGO' par un lien vers votre logo -->
-            <img src="URL_DE_VOTRE_LOGO" alt="Logo Ges'Eau" class="logo">
+            <img src="logo.png" alt="Logo Ges'Eau" class="logo">
             <h1>Tableau de Bord Ges'SMAWN</h1>
             <h2>Suivi des Données de Mesure</h2>
         </header>
@@ -52,4 +52,5 @@
     <script src="script.js"></script>
 
 </body>
+
 </html>
