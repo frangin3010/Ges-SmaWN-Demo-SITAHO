@@ -7,11 +7,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- ÉLÉMENTS DE LA PAGE ---
     const tableBody = document.getElementById('dataTableBody');
     const statusText = document.getElementById('status');
-    // AJOUT : On récupère le canevas du graphique
     const chartCanvas = document.getElementById('volumeChart');
 
     // --- VARIABLE GLOBALE POUR LE GRAPHIQUE ---
-    // AJOUT : On va stocker notre graphique ici pour pouvoir le mettre à jour
     let volumeChart; 
 
     // --- FONCTIONS ---
@@ -23,21 +21,16 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!response.ok) throw new Error('Erreur réseau.');
             const rawData = await response.json();
             
-            // S'assurer que les données sont triées par timestamp
             rawData.sort((a, b) => a.timestamp - b.timestamp);
 
-            const dataGesbox1 = rawData.filter(d => d.gesBoxId === 'GesBox1');
-            const dataGesbox2 = rawData.filter(d => d.gesBoxId === 'GesBox2');
+            // Les données reçues sont DÉJÀ cumulées, on les utilise directement
+            const cumulativeData1 = rawData.filter(d => d.gesBoxId === 'GesBox1');
+            const cumulativeData2 = rawData.filter(d => d.gesBoxId === 'GesBox2');
 
-            // AJOUT : Calculer le volume cumulé pour un affichage correct sur le graphique
-            const cumulativeData1 = calculateCumulativeVolume(dataGesbox1);
-            const cumulativeData2 = calculateCumulativeVolume(dataGesbox2);
-
+            // On aligne les données cumulées
             const synchronizedData = alignData(cumulativeData1, cumulativeData2);
 
             displayDataInTable(synchronizedData);
-            
-            // AJOUT : Dessiner ou mettre à jour le graphique avec les données
             updateChart(synchronizedData);
 
             const options = { dateStyle: 'long', timeStyle: 'medium' };
@@ -49,20 +42,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // AJOUT : Nouvelle fonction pour calculer le volume cumulé
-    function calculateCumulativeVolume(data) {
-        let cumulativeVolume = 0;
-        return data.map(point => {
-            cumulativeVolume += point.volume;
-            return {
-                ...point, // Copie les propriétés existantes (gesBoxId, timestamp)
-                volume: cumulativeVolume // Remplace le volume par le volume cumulé
-            };
-        });
-    }
-    
+    // --- SUPPRESSION ---
+    // La fonction calculateCumulativeVolume est supprimée car elle est la cause du problème ici.
+    // L'ESP32 est maintenant la source unique de vérité pour le cumul.
+
     // Ta fonction alignData est conservée telle quelle
     function alignData(data1, data2) {
+        // ... (Pas de changement dans cette fonction, elle reste identique)
         const aligned = [];
         let index2 = 0;
         data1.forEach(point1 => {
@@ -85,8 +71,9 @@ document.addEventListener('DOMContentLoaded', function() {
         return aligned;
     }
 
-    // Ta fonction displayDataInTable est conservée, j'ai juste ajusté le titre des colonnes pour correspondre au HTML
+    // Ta fonction displayDataInTable est conservée
     function displayDataInTable(data) {
+        // ... (Pas de changement dans cette fonction, elle reste identique)
         tableBody.innerHTML = '';
         if (data.length === 0) {
             statusText.textContent = 'Aucune donnée synchronisée à afficher.';
@@ -104,44 +91,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // AJOUT : Nouvelle fonction pour gérer le graphique
+    // La fonction updateChart est conservée
     function updateChart(data) {
+        // ... (Pas de changement dans cette fonction, elle reste identique)
         if (!chartCanvas) return;
-
         const labels = data.map(item => new Date(item.timestamp * 1000).toLocaleTimeString('fr-FR', {timeZone: 'UTC'}));
         const gesbox1Data = data.map(item => item.volume1);
         const gesbox2Data = data.map(item => item.volume2 !== null ? item.volume2 : NaN);
-
         const chartData = {
             labels: labels,
             datasets: [{
                 label: 'Volume Cumulé GesBox 1 (L)',
                 data: gesbox1Data,
-                borderColor: 'rgb(54, 162, 235)', // Bleu
+                borderColor: 'rgb(54, 162, 235)',
                 backgroundColor: 'rgba(54, 162, 235, 0.5)',
                 tension: 0.1
             }, {
                 label: 'Volume Cumulé GesBox 2 (L)',
                 data: gesbox2Data,
-                borderColor: 'rgb(255, 99, 132)', // Rouge
+                borderColor: 'rgb(255, 99, 132)',
                 backgroundColor: 'rgba(255, 99, 132, 0.5)',
                 tension: 0.1
             }]
         };
-
         if (!volumeChart) {
-            const config = {
-                type: 'line',
-                data: chartData,
-                options: {
-                    responsive: true,
-                    plugins: { legend: { position: 'top' }, title: { display: true, text: 'Suivi des Volumes Cumulés' } },
-                    scales: {
-                        y: { beginAtZero: true, title: { display: true, text: 'Volume (L)' } },
-                        x: { title: { display: true, text: 'Heure (UTC)' } }
-                    }
-                }
-            };
+            const config = { type: 'line', data: chartData, options: { responsive: true, plugins: { legend: { position: 'top' }, title: { display: true, text: 'Suivi des Volumes Cumulés' } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Volume (L)' } }, x: { title: { display: true, text: 'Heure (UTC)' } } } } };
             volumeChart = new Chart(chartCanvas, config);
         } else {
             volumeChart.data = chartData;
@@ -152,6 +126,4 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- EXÉCUTION ---
     fetchDataAndDisplay();
     setInterval(fetchDataAndDisplay, 30000); 
-
 });
-
