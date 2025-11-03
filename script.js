@@ -1,17 +1,31 @@
 document.addEventListener('DOMContentLoaded', function() {
     
-    // --- CONFIGURATION (Basée sur ton fichier) ---
+    // --- CONFIGURATION ---
     const googleScriptURL = 'https://script.google.com/macros/s/AKfycbymCn8WFSyG0g4J6e9pTBMEUZNSLji_OVqovu8wE2knk7-7Hp7JCHfXRnt18L3ydmk7Ew/exec';
     
     // --- ÉLÉMENTS DE LA PAGE ---
     const tableBody = document.getElementById('dataTableBody');
     const statusText = document.getElementById('status');
     const chartCanvas = document.getElementById('volumeChart');
+    // --- ÉLÉMENTS POUR LA FONCTIONNALITÉ DÉPLIANTE ---
+    const collapsibleHeader = document.querySelector('.collapsible-header');
+    const collapsibleContent = document.querySelector('.collapsible-content');
 
     // --- VARIABLE GLOBALE POUR LE GRAPHIQUE ---
     let volumeChart; 
 
-    // --- FONCTIONS ---
+    // --- GESTION DU DÉPLOIEMENT DU TABLEAU AU CLIC SUR LE TITRE ---
+    collapsibleHeader.addEventListener('click', () => {
+        collapsibleHeader.classList.toggle('active');
+        if (collapsibleContent.style.maxHeight) {
+            collapsibleContent.style.maxHeight = null; // Referme l'accordéon
+        } else {
+            // Ouvre l'accordéon en lui donnant la hauteur nécessaire pour afficher tout son contenu
+            collapsibleContent.style.maxHeight = collapsibleContent.scrollHeight + "px";
+        }
+    });
+
+    // --- FONCTIONS DE GESTION DES DONNÉES ET DE L'AFFICHAGE ---
 
     async function fetchDataAndDisplay() {
         statusText.textContent = 'Mise à jour des données depuis Google Sheets...';
@@ -22,11 +36,10 @@ document.addEventListener('DOMContentLoaded', function() {
             
             rawData.sort((a, b) => a.timestamp - b.timestamp);
 
-            const cumulativeData1 = rawData.filter(d => d.gesBoxId === 'GesBox1');
-            const cumulativeData2 = rawData.filter(d => d.gesBoxId === 'GesBox2');
+            const dataGesbox1 = rawData.filter(d => d.gesBoxId === 'GesBox1');
+            const dataGesbox2 = rawData.filter(d => d.gesBoxId === 'GesBox2');
 
-            // On utilise la nouvelle fonction d'alignement plus robuste
-            const synchronizedData = alignData(cumulativeData1, cumulativeData2);
+            const synchronizedData = alignData(dataGesbox1, dataGesbox2);
 
             displayDataInTable(synchronizedData);
             updateChart(synchronizedData);
@@ -36,11 +49,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         } catch (error) {
             console.error('Erreur lors de la mise à jour ou de l\'affichage:', error);
-            statusText.textContent = 'Erreur lors de la mise à jour des données. Vérifiez la console pour plus de détails.';
+            statusText.textContent = 'Erreur lors de la mise à jour des données.';
         }
     }
 
-    // --- MODIFICATION : Remplacement de l'ancienne fonction alignData ---
     function alignData(data1, data2) {
         if (data1.length === 0 && data2.length === 0) return [];
 
@@ -50,32 +62,16 @@ document.addEventListener('DOMContentLoaded', function() {
         let lastVolume1 = null;
         let lastVolume2 = null;
 
-        // On continue tant qu'on a des données à traiter dans l'une des deux listes
         while (index1 < data1.length || index2 < data2.length) {
             const point1 = index1 < data1.length ? data1[index1] : null;
             const point2 = index2 < data2.length ? data2[index2] : null;
 
-            // Cas 1 : Les deux listes ont encore des points
-            if (point1 && point2) {
-                if (point1.timestamp <= point2.timestamp) {
-                    lastVolume1 = point1.volume;
-                    result.push({ timestamp: point1.timestamp, volume1: lastVolume1, volume2: lastVolume2 });
-                    index1++;
-                } else {
-                    lastVolume2 = point2.volume;
-                    result.push({ timestamp: point2.timestamp, volume1: lastVolume1, volume2: lastVolume2 });
-                    index2++;
-                }
-            } 
-            // Cas 2 : Il ne reste que des points dans data1
-            else if (point1) {
-                lastVolume1 = point1.volume;
+            if (point1 && (!point2 || point1.timestamp <= point2.timestamp)) {
+                lastVolume1 = point1.volume_cumule;
                 result.push({ timestamp: point1.timestamp, volume1: lastVolume1, volume2: lastVolume2 });
                 index1++;
-            }
-            // Cas 3 : Il ne reste que des points dans data2
-            else if (point2) {
-                lastVolume2 = point2.volume;
+            } else if (point2) {
+                lastVolume2 = point2.volume_cumule;
                 result.push({ timestamp: point2.timestamp, volume1: lastVolume1, volume2: lastVolume2 });
                 index2++;
             }
@@ -83,7 +79,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return result;
     }
 
-    // Fonction pour afficher les données dans le tableau
     function displayDataInTable(data) {
         tableBody.innerHTML = '';
         if (data.length === 0) {
@@ -91,26 +86,25 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Affiche les données en ordre inverse (plus récentes en haut) pour le tableau
         const reversedData = [...data].reverse();
 
         reversedData.forEach(item => {
             const row = document.createElement('tr');
 
-            const v1 = item.volume1 !== null ? item.volume1 : 0;
-            const v2 = item.volume2 !== null ? item.volume2 : 0;
+            const v1 = (item.volume1 !== null && item.volume1 !== "") ? parseFloat(item.volume1) : null;
+            const v2 = (item.volume2 !== null && item.volume2 !== "") ? parseFloat(item.volume2) : null;
 
-            const diffVolume = (item.volume1 !== null && item.volume2 !== null) ? (v1 - v2).toFixed(3) : 'N/A';
-            const diffPercent = (v1 > 0 && item.volume2 !== null) ? (((v1 - v2) / v1) * 100).toFixed(2) + '%' : 'N/A';
+            const diffVolume = (v1 !== null && v2 !== null) ? (v1 - v2).toFixed(3) : 'N/A';
+            const diffPercent = (v1 > 0 && v2 !== null) ? (((v1 - v2) / v1) * 100).toFixed(2) + '%' : 'N/A';
             
             const date = new Date(item.timestamp * 1000);
             const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'UTC' };
             const formattedTime = date.toLocaleString('fr-FR', options);
             
             row.innerHTML = `
-                <td>${formattedTime} (UTC)</td>
-                <td>${item.volume1 !== null ? item.volume1.toFixed(3) : '---'}</td>
-                <td>${item.volume2 !== null ? item.volume2.toFixed(3) : '---'}</td>
+                <td>${formattedTime}</td>
+                <td>${v1 !== null ? v1.toFixed(3) : '---'}</td>
+                <td>${v2 !== null ? v2.toFixed(3) : '---'}</td>
                 <td>${diffVolume}</td>
                 <td>${diffPercent}</td>
             `;
@@ -118,29 +112,28 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Fonction pour gérer le graphique
     function updateChart(data) {
         if (!chartCanvas) return;
 
         const labels = data.map(item => new Date(item.timestamp * 1000).toLocaleTimeString('fr-FR', {timeZone: 'UTC'}));
         const gesbox1Data = data.map(item => item.volume1);
-        const gesbox2Data = data.map(item => item.volume2); // On peut passer null, Chart.js le gère
+        const gesbox2Data = data.map(item => item.volume2);
 
         const chartData = {
             labels: labels,
             datasets: [{
                 label: 'Volume Cumulé GesBox 1 (L)',
                 data: gesbox1Data,
-                borderColor: 'rgb(54, 162, 235)', // Bleu
+                borderColor: 'rgb(54, 162, 235)',
                 backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                spanGaps: true, // Relie les points s'il y a des données manquantes (null)
+                spanGaps: true,
                 tension: 0.1
             }, {
                 label: 'Volume Cumulé GesBox 2 (L)',
                 data: gesbox2Data,
-                borderColor: 'rgb(255, 99, 132)', // Rouge
+                borderColor: 'rgb(255, 99, 132)',
                 backgroundColor: 'rgba(255, 99, 132, 0.5)',
-                spanGaps: true, // Relie les points s'il y a des données manquantes (null)
+                spanGaps: true,
                 tension: 0.1
             }]
         };
@@ -151,7 +144,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 data: chartData,
                 options: {
                     responsive: true,
-                    animation: false, // Désactive l'animation pour des mises à jour plus fluides
+                    animation: false,
                     plugins: { legend: { position: 'top' }, title: { display: true, text: 'Suivi des Volumes Cumulés' } },
                     scales: {
                         y: { beginAtZero: true, title: { display: true, text: 'Volume (L)' } },
