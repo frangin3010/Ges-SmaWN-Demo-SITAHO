@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // C'est ici que tu configures le seuil. 
     // Par exemple, 5 signifie que l'alerte se déclenche si la différence
     // dépasse 5% du plus grand des deux volumes.
-    const alertThresholdPercent = 5.0; 
+    const alertThresholdPercent = 8.0; 
 
     // --- ÉLÉMENTS DE LA PAGE ---
     const tableBody = document.getElementById('dataTableBody');
@@ -169,3 +169,4 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchDataAndDisplay();
     setInterval(fetchDataAndDisplay, 30000); 
 });
+
