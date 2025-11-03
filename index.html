@@ -32,7 +32,7 @@
         .summary-box {
             padding: 20px;
             border-radius: 8px;
-            flex-grow: 1;
+            flex-basis: 45%; /* Donne une base de largeur à chaque boîte */
             color: white;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
@@ -53,8 +53,7 @@
         /* Couleurs spécifiques pour chaque boîte */
         .box1 { background-color: rgb(54, 162, 235); } /* Bleu */
         .box2 { background-color: rgb(255, 99, 132); } /* Rouge */
-        .box-diff { background-color: #777; } /* Gris */
-
+        
         /* Style pour le conteneur d'alerte */
         #alert-container {
             margin-top: 30px;
@@ -90,7 +89,6 @@
             99% { background-color: #d32f2f; color: white; } /* Rouge */
             100% { background-color: #ff9800; color: white; } /* Orange */
         }
-
     </style>
 </head>
 <body>
@@ -107,11 +105,7 @@
             <canvas id="volumeChart"></canvas>
         </div>
         
-        <!-- ======================================================= -->
-        <!-- === NOUVELLE SECTION POUR LA SYNTHÈSE ET L'ALERTE === -->
-        <!-- ======================================================= -->
         <div class="section" id="summary-section">
-            <!-- Le titre avec la date sera mis à jour par JavaScript -->
             <h2 id="summary-title">Synthèse des Dernières Mesures</h2>
         
             <div class="summary-boxes">
@@ -126,12 +120,6 @@
                     <h3>GesBox 2</h3>
                     <p id="summary-volume2">--.-- L</p>
                 </div>
-        
-                <!-- Boîte pour la Différence -->
-                <div class="summary-box box-diff">
-                    <h3>Différence</h3>
-                    <p id="summary-difference">--.-- L</p>
-                </div>
             </div>
         
             <!-- Conteneur pour l'alerte visuelle (initialement caché) -->
@@ -140,9 +128,6 @@
                 <div id="alert-message">Alerte Fuite</div>
             </div>
         </div>
-        <!-- ======================================================= -->
-        <!-- === FIN DE LA NOUVELLE SECTION === -->
-        <!-- ======================================================= -->
 
         <div class="section" id="data-table-container">
             <h2>Tableau des Données Synchronisées</h2>
