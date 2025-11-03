@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // --- CONFIGURATION ---
     // IMPORTANT : Pense à mettre ici le NOUVEAU lien que tu obtiendras après avoir redéployé le script Google Apps
-    const googleScriptURL = 'https://script.google.com/macros/s/AKfycby64me45DPUwJuafXVc6eLDYLBqc27wkOFWk17h7aX2JuAA-yQPQ5mmYbe_MKrwsDo0Yg/exec';
+    const googleScriptURL = 'https://script.google.com/macros/s/AKfycbxoWkRWT_da6Ohg3tjvSfvwx-kQ5Mb-shY9drY8V1_CtqRPAvVRhJpE7x-pjnSWrczwmA/exec';
     
     // --- ÉLÉMENTS DE LA PAGE ---
     const tableBody = document.getElementById('dataTableBody');
@@ -133,3 +133,4 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchDataAndDisplay();
     setInterval(fetchDataAndDisplay, 30000);
 });
+
