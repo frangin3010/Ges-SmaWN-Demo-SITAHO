@@ -1,9 +1,9 @@
 document.addEventListener('DOMContentLoaded', function() {
     
     // --- CONFIGURATION ---
-    // IMPORTANT : Pense à mettre ici le NOUVEAU lien que tu obtiendras après avoir redéployé le script Google Apps
-    const googleScriptURL = 'https://script.google.com/macros/s/AKfycbxoWkRWT_da6Ohg3tjvSfvwx-kQ5Mb-shY9drY8V1_CtqRPAvVRhJpE7x-pjnSWrczwmA/exec';
-    
+    const googleScriptURL = 'https://script.google.com/macros/s/AKfycbygPavM7ZctcHy-wJzH_CC6CFUu3B32oCZFv25fbbnvH-exRWWzKuvtijwAkTBhn6VzuQ/exec';
+    const toleranceSeconds = 15; // L'écart de temps maximum pour considérer une correspondance
+
     // --- ÉLÉMENTS DE LA PAGE ---
     const tableBody = document.getElementById('dataTableBody');
     const statusText = document.getElementById('status');
@@ -23,76 +23,70 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     async function fetchDataAndDisplay() {
-        statusText.textContent = 'Mise à jour des données depuis Google Sheets...';
+        statusText.textContent = 'Mise à jour des données...';
         try {
             const response = await fetch(googleScriptURL);
             if (!response.ok) throw new Error('Erreur réseau.');
             const rawData = await response.json();
             
-            // On trie toutes les données brutes par timestamp une seule fois
-            rawData.sort((a, b) => a.timestamp - b.timestamp);
+            const dataGesbox1 = rawData.filter(d => d.gesBoxId === 'GesBox1').sort((a, b) => a.timestamp - b.timestamp);
+            const dataGesbox2 = rawData.filter(d => d.gesBoxId === 'GesBox2').sort((a, b) => a.timestamp - b.timestamp);
 
-            const dataGesbox1 = rawData.filter(d => d.gesBoxId === 'GesBox1');
-            const dataGesbox2 = rawData.filter(d => d.gesBoxId === 'GesBox2');
-
-            // On utilise la nouvelle fonction d'alignement plus robuste
             const synchronizedData = alignData(dataGesbox1, dataGesbox2);
 
             displayDataInTable(synchronizedData);
             updateChart(synchronizedData);
 
-            const options = { dateStyle: 'long', timeStyle: 'medium' };
-            statusText.textContent = `Dernière mise à jour : ${new Date().toLocaleString('fr-FR', options)}`;
+            statusText.textContent = `Dernière mise à jour : ${new Date().toLocaleString('fr-FR')}`;
 
         } catch (error) {
-            console.error('Erreur lors de la mise à jour:', error);
-            statusText.textContent = 'Erreur lors de la mise à jour des données.';
+            console.error('Erreur:', error);
+            statusText.textContent = 'Erreur lors de la mise à jour.';
         }
     }
 
-    // --- NOUVELLE FONCTION D'ALIGNEMENT PLUS ROBUSTE ---
+    // --- RETOUR À LA LOGIQUE D'ALIGNEMENT SIMPLE ET FIABLE ---
     function alignData(data1, data2) {
-        if (data1.length === 0 && data2.length === 0) return [];
+        let alignedData = [];
+        let lastFoundIndex2 = 0; // Pour optimiser la recherche
 
-        let result = [];
-        let index1 = 0;
-        let index2 = 0;
-        let lastVolume1 = null;
-        let lastVolume2 = null;
+        // On parcourt data1 (la référence)
+        for (const point1 of data1) {
+            let bestMatch = null;
+            
+            // On cherche la correspondance la plus proche dans data2
+            for (let i = lastFoundIndex2; i < data2.length; i++) {
+                const point2 = data2[i];
+                const timeDiff = Math.abs(point1.timestamp - point2.timestamp);
 
-        // On continue tant qu'on a des données à traiter dans l'une des deux listes
-        while (index1 < data1.length || index2 < data2.length) {
-            const point1 = index1 < data1.length ? data1[index1] : null;
-            const point2 = index2 < data2.length ? data2[index2] : null;
-
-            // On choisit le point le plus ancien dans le temps
-            if (point1 && (!point2 || point1.timestamp <= point2.timestamp)) {
-                lastVolume1 = point1.volume_cumule; // Met à jour la dernière valeur connue de la GesBox 1
-                result.push({
-                    timestamp: point1.timestamp,
-                    volume1: lastVolume1,
-                    volume2: lastVolume2 // Utilise la dernière valeur connue de la GesBox 2
-                });
-                index1++;
-            } else if (point2) {
-                lastVolume2 = point2.volume_cumule; // Met à jour la dernière valeur connue de la GesBox 2
-                result.push({
-                    timestamp: point2.timestamp,
-                    volume1: lastVolume1, // Utilise la dernière valeur connue de la GesBox 1
-                    volume2: lastVolume2
-                });
-                index2++;
+                if (timeDiff <= toleranceSeconds) {
+                    bestMatch = point2;
+                    lastFoundIndex2 = i; // On reprendra la recherche à partir d'ici
+                    break; // On a trouvé la première correspondance, c'est suffisant
+                }
+                
+                // Si on a trop dépassé dans le temps, inutile de chercher plus loin
+                if (point2.timestamp > point1.timestamp + toleranceSeconds) {
+                    break;
+                }
             }
+
+            alignedData.push({
+                timestamp: point1.timestamp,
+                volume1: point1.volume_cumule,
+                volume2: bestMatch ? bestMatch.volume_cumule : null // Si pas de correspondance, on met null
+            });
         }
-        return result;
+        return alignedData;
     }
 
     function displayDataInTable(data) {
         tableBody.innerHTML = '';
-        if (data.length === 0) {
-            statusText.textContent = 'Aucune donnée synchronisée à afficher.';
+        if (!data || data.length === 0) {
+            statusText.textContent = 'Aucune donnée à afficher.';
             return;
         }
+
         const reversedData = [...data].reverse();
         reversedData.forEach(item => {
             const row = document.createElement('tr');
@@ -100,6 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const v2 = (item.volume2 !== null && isFinite(item.volume2)) ? parseFloat(item.volume2) : null;
             const diffVolume = (v1 !== null && v2 !== null) ? (v1 - v2).toFixed(3) : 'N/A';
             const diffPercent = (v1 > 0 && v2 !== null) ? (((v1 - v2) / v1) * 100).toFixed(2) + '%' : 'N/A';
+            
             const date = new Date(item.timestamp * 1000);
             const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'UTC' };
             const formattedTime = date.toLocaleString('fr-FR', options);
@@ -110,6 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateChart(data) {
+        // ... (cette fonction reste inchangée, elle fonctionnera avec les bonnes données)
         if (!chartCanvas) return;
         const labels = data.map(item => new Date(item.timestamp * 1000).toLocaleTimeString('fr-FR', {timeZone: 'UTC'}));
         const gesbox1Data = data.map(item => item.volume1);
@@ -133,4 +129,3 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchDataAndDisplay();
     setInterval(fetchDataAndDisplay, 30000);
 });
-
