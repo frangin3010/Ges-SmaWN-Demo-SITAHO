@@ -7,25 +7,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const tableBody = document.getElementById('dataTableBody');
     const statusText = document.getElementById('status');
     const chartCanvas = document.getElementById('volumeChart');
-    // --- ÉLÉMENTS POUR LA FONCTIONNALITÉ DÉPLIANTE ---
     const collapsibleHeader = document.querySelector('.collapsible-header');
     const collapsibleContent = document.querySelector('.collapsible-content');
 
     // --- VARIABLE GLOBALE POUR LE GRAPHIQUE ---
     let volumeChart; 
 
-    // --- GESTION DU DÉPLOIEMENT DU TABLEAU AU CLIC SUR LE TITRE ---
+    // --- GESTION DU DÉPLOIEMENT DU TABLEAU ---
     collapsibleHeader.addEventListener('click', () => {
         collapsibleHeader.classList.toggle('active');
         if (collapsibleContent.style.maxHeight) {
-            collapsibleContent.style.maxHeight = null; // Referme l'accordéon
+            collapsibleContent.style.maxHeight = null;
         } else {
-            // Ouvre l'accordéon en lui donnant la hauteur nécessaire pour afficher tout son contenu
             collapsibleContent.style.maxHeight = collapsibleContent.scrollHeight + "px";
         }
     });
 
-    // --- FONCTIONS DE GESTION DES DONNÉES ET DE L'AFFICHAGE ---
+    // --- FONCTIONS DE GESTION DES DONNÉES ---
 
     async function fetchDataAndDisplay() {
         statusText.textContent = 'Mise à jour des données depuis Google Sheets...';
@@ -48,24 +46,21 @@ document.addEventListener('DOMContentLoaded', function() {
             statusText.textContent = `Dernière mise à jour : ${new Date().toLocaleString('fr-FR', options)}`;
 
         } catch (error) {
-            console.error('Erreur lors de la mise à jour ou de l\'affichage:', error);
+            console.error('Erreur lors de la mise à jour:', error);
             statusText.textContent = 'Erreur lors de la mise à jour des données.';
         }
     }
 
     function alignData(data1, data2) {
         if (data1.length === 0 && data2.length === 0) return [];
-
         let result = [];
         let index1 = 0;
         let index2 = 0;
         let lastVolume1 = null;
         let lastVolume2 = null;
-
         while (index1 < data1.length || index2 < data2.length) {
             const point1 = index1 < data1.length ? data1[index1] : null;
             const point2 = index2 < data2.length ? data2[index2] : null;
-
             if (point1 && (!point2 || point1.timestamp <= point2.timestamp)) {
                 lastVolume1 = point1.volume_cumule;
                 result.push({ timestamp: point1.timestamp, volume1: lastVolume1, volume2: lastVolume2 });
@@ -79,6 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return result;
     }
 
+    // --- FONCTION CORRIGÉE ---
     function displayDataInTable(data) {
         tableBody.innerHTML = '';
         if (data.length === 0) {
@@ -87,12 +83,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const reversedData = [...data].reverse();
-
         reversedData.forEach(item => {
             const row = document.createElement('tr');
 
-            const v1 = (item.volume1 !== null && item.volume1 !== "") ? parseFloat(item.volume1) : null;
-            const v2 = (item.volume2 !== null && item.volume2 !== "") ? parseFloat(item.volume2) : null;
+            // --- MODIFICATION POUR LA GESTION DES NaN ---
+            // On vérifie que la valeur est un nombre valide avant de la parser.
+            // isFinite() gère les nombres et les chaînes de caractères numériques, mais rejette les chaînes vides.
+            const v1 = (item.volume1 !== null && isFinite(item.volume1)) ? parseFloat(item.volume1) : null;
+            const v2 = (item.volume2 !== null && isFinite(item.volume2)) ? parseFloat(item.volume2) : null;
+            // --- FIN DE LA MODIFICATION ---
 
             const diffVolume = (v1 !== null && v2 !== null) ? (v1 - v2).toFixed(3) : 'N/A';
             const diffPercent = (v1 > 0 && v2 !== null) ? (((v1 - v2) / v1) * 100).toFixed(2) + '%' : 'N/A';
@@ -114,30 +113,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateChart(data) {
         if (!chartCanvas) return;
-
         const labels = data.map(item => new Date(item.timestamp * 1000).toLocaleTimeString('fr-FR', {timeZone: 'UTC'}));
         const gesbox1Data = data.map(item => item.volume1);
         const gesbox2Data = data.map(item => item.volume2);
-
         const chartData = {
             labels: labels,
             datasets: [{
                 label: 'Volume Cumulé GesBox 1 (L)',
                 data: gesbox1Data,
-                borderColor: 'rgb(54, 162, 235)',
-                backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                spanGaps: true,
-                tension: 0.1
+                borderColor: 'rgb(54, 162, 235)', backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                spanGaps: true, tension: 0.1
             }, {
                 label: 'Volume Cumulé GesBox 2 (L)',
                 data: gesbox2Data,
-                borderColor: 'rgb(255, 99, 132)',
-                backgroundColor: 'rgba(255, 99, 132, 0.5)',
-                spanGaps: true,
-                tension: 0.1
+                borderColor: 'rgb(255, 99, 132)', backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                spanGaps: true, tension: 0.1
             }]
         };
-
         if (!volumeChart) {
             const config = {
                 type: 'line',
