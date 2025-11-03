@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     
     // --- CONFIGURATION ---
-    const googleScriptURL = 'https://script.google.com/macros/s/AKfycbymCn8WFSyG0g4J6e9pTBMEUZNSLji_OVqovu8wE2knk7-7Hp7JCHfXRnt18L3ydmk7Ew/exec';
+    const googleScriptURL = 'https://script.google.com/macros/s/AKfycbzUUuUE2av_vc14LltOEdcFWFwVb0Ih2yQe_NFC_GmqrxRHW8YLVmCoSsFON3ZxD4Q8fg/exec';
     
     // --- ÉLÉMENTS DE LA PAGE ---
     const tableBody = document.getElementById('dataTableBody');
@@ -155,3 +155,4 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchDataAndDisplay();
     setInterval(fetchDataAndDisplay, 30000); 
 });
+
