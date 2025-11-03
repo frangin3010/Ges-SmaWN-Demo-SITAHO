@@ -1,26 +1,14 @@
 document.addEventListener('DOMContentLoaded', function() {
     
     // --- CONFIGURATION ---
-    const googleScriptURL = 'https://script.google.com/macros/s/AKfycbygPavM7ZctcHy-wJzH_CC6CFUu3B32oCZFv25fbbnvH-exRWWzKuvtijwAkTBhn6VzuQ/exec';
-    const toleranceSeconds = 15; // L'écart de temps maximum pour considérer une correspondance
+    const googleScriptURL = 'https://script.google.com/macros/s/AKfycby2fDqPNwMZsPyNfj4TjVcMN8j_f-mpYnP2_PNGCVfLFdq7DlZToLPAxZ4sppS6e-GjjQ/exec';
+    const toleranceSeconds = 15; // Écart de temps max en secondes pour une correspondance
 
     // --- ÉLÉMENTS DE LA PAGE ---
     const tableBody = document.getElementById('dataTableBody');
     const statusText = document.getElementById('status');
     const chartCanvas = document.getElementById('volumeChart');
-    const collapsibleHeader = document.querySelector('.collapsible-header');
-    const collapsibleContent = document.querySelector('.collapsible-content');
-
     let volumeChart; 
-
-    collapsibleHeader.addEventListener('click', () => {
-        collapsibleHeader.classList.toggle('active');
-        if (collapsibleContent.style.maxHeight) {
-            collapsibleContent.style.maxHeight = null;
-        } else {
-            collapsibleContent.style.maxHeight = collapsibleContent.scrollHeight + "px";
-        }
-    });
 
     async function fetchDataAndDisplay() {
         statusText.textContent = 'Mise à jour des données...';
@@ -45,27 +33,31 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- RETOUR À LA LOGIQUE D'ALIGNEMENT SIMPLE ET FIABLE ---
+    // --- RETOUR À LA LOGIQUE D'ALIGNEMENT INITIALE (SIMPLE ET FIABLE) ---
+    // Cette fonction utilise GesBox 1 comme référence et cherche la meilleure
+    // correspondance pour GesBox 2 dans une fenêtre de temps.
     function alignData(data1, data2) {
         let alignedData = [];
         let lastFoundIndex2 = 0; // Pour optimiser la recherche
 
-        // On parcourt data1 (la référence)
+        // On parcourt les données de la GesBox 1 (la référence)
         for (const point1 of data1) {
             let bestMatch = null;
             
-            // On cherche la correspondance la plus proche dans data2
+            // On cherche la correspondance la plus proche pour ce point1 dans les données de la GesBox 2
             for (let i = lastFoundIndex2; i < data2.length; i++) {
                 const point2 = data2[i];
                 const timeDiff = Math.abs(point1.timestamp - point2.timestamp);
 
+                // Si on trouve un point dans la fenêtre de tolérance
                 if (timeDiff <= toleranceSeconds) {
                     bestMatch = point2;
-                    lastFoundIndex2 = i; // On reprendra la recherche à partir d'ici
-                    break; // On a trouvé la première correspondance, c'est suffisant
+                    lastFoundIndex2 = i; // On mémorise l'index pour la prochaine recherche
+                    break; // On prend la première correspondance trouvée et on arrête de chercher
                 }
                 
-                // Si on a trop dépassé dans le temps, inutile de chercher plus loin
+                // Optimisation : si les données de la GesBox 2 sont déjà trop loin dans le futur,
+                // inutile de continuer à chercher pour ce point1.
                 if (point2.timestamp > point1.timestamp + toleranceSeconds) {
                     break;
                 }
@@ -105,7 +97,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateChart(data) {
-        // ... (cette fonction reste inchangée, elle fonctionnera avec les bonnes données)
         if (!chartCanvas) return;
         const labels = data.map(item => new Date(item.timestamp * 1000).toLocaleTimeString('fr-FR', {timeZone: 'UTC'}));
         const gesbox1Data = data.map(item => item.volume1);
