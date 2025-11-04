@@ -3,11 +3,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- CONFIGURATION ---
     const googleScriptURL = 'https://script.google.com/macros/s/AKfycbwRndRiOeVtW9K6ix97qKXmYL3FurYAmfD8Fd2mZZ8Lv2zrJqWMlhKbBbymwXNrcf6ZlQ/exec';
     
-    // --- MARGE DE TOLÉRANCE EN POURCENTAGE POUR L'ALERTE ---
-    // C'est ici que tu configures le seuil. 
-    // Par exemple, 5 signifie que l'alerte se déclenche si la différence
-    // dépasse 5% du plus grand des deux volumes.
+    // Marge de tolérance en pourcentage pour l'alerte
     const alertThresholdPercent = 8.0; 
+
+    // Intervalle de temps pour la synchronisation du TABLEAU (comme tu l'as demandé)
+    const tableSyncToleranceSeconds = 16; 
 
     // --- ÉLÉMENTS DE LA PAGE ---
     const tableBody = document.getElementById('dataTableBody');
@@ -30,19 +30,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!response.ok) throw new Error('Erreur réseau.');
             const rawData = await response.json();
             
-            // On trie toutes les données par timestamp au cas où elles arriveraient dans le désordre
             rawData.sort((a, b) => a.timestamp - b.timestamp);
 
             const dataGesbox1 = rawData.filter(d => d.gesBoxId === 'GesBox1');
             const dataGesbox2 = rawData.filter(d => d.gesBoxId === 'GesBox2');
 
-            // On aligne les données pour le graphique et le tableau
-            const synchronizedData = alignData(dataGesbox1, dataGesbox2);
+            // NOUVELLE LOGIQUE : On utilise deux alignements différents
+            const dataForChart = alignDataForChart(dataGesbox1, dataGesbox2);
+            const dataForTable = alignDataForTable(dataGesbox1, dataGesbox2);
 
-            // On met à jour les différents éléments de la page
-            displayDataInTable(synchronizedData);
-            updateChart(synchronizedData);
-            updateSummaryAndAlerts(dataGesbox1, dataGesbox2); // On utilise les données non-alignées pour trouver le max
+            displayDataInTable(dataForTable);
+            updateChart(dataForChart);
+            updateSummaryAndAlerts(dataGesbox1, dataGesbox2);
 
             const options = { dateStyle: 'long', timeStyle: 'medium' };
             statusText.textContent = `Dernière mise à jour : ${new Date().toLocaleString('fr-FR', options)}`;
@@ -53,54 +52,40 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Fonction pour la synthèse et l'alerte
-    function updateSummaryAndAlerts(data1, data2) {
-        // On cherche la dernière (et donc la plus grande) valeur de chaque GesBox
-        const lastDataPoint1 = data1.length > 0 ? data1[data1.length - 1] : null;
-        const lastDataPoint2 = data2.length > 0 ? data2[data2.length - 1] : null;
+    // --- NOUVEL ALGORITHME D'ALIGNEMENT POUR LE TABLEAU (selon ta logique) ---
+    function alignDataForTable(data1, data2) {
+        const aligned = [];
 
-        const lastVolume1 = lastDataPoint1 ? lastDataPoint1.volume : null;
-        const lastVolume2 = lastDataPoint2 ? lastDataPoint2.volume : null;
-        
-        // On trouve le timestamp le plus récent des deux pour le titre
-        const lastTimestamp1 = lastDataPoint1 ? lastDataPoint1.timestamp : 0;
-        const lastTimestamp2 = lastDataPoint2 ? lastDataPoint2.timestamp : 0;
-        const mostRecentTimestamp = Math.max(lastTimestamp1, lastTimestamp2);
+        // On prend data1 (GesBox 1) comme référence
+        data1.forEach(point1 => {
+            let bestMatch = null;
+            let smallestDifference = Infinity;
 
-        if (mostRecentTimestamp > 0) {
-            const lastDate = new Date(mostRecentTimestamp * 1000);
-            const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'UTC' };
-            summaryTitle.textContent = `Synthèse à ${lastDate.toLocaleString('fr-FR', options)} (UTC)`;
-        }
+            // On cherche la correspondance la plus proche dans data2
+            data2.forEach(point2 => {
+                const timeDiff = Math.abs(point1.timestamp - point2.timestamp);
 
-        // Mise à jour des boîtes de synthèse
-        summaryVolume1.textContent = lastVolume1 !== null ? `${lastVolume1.toFixed(3)} L` : '--.-- L';
-        summaryVolume2.textContent = lastVolume2 !== null ? `${lastVolume2.toFixed(3)} L` : '--.-- L';
-        
-        // Gestion de l'alerte conditionnelle
-        if (lastVolume1 !== null && lastVolume2 !== null) {
-            const difference = Math.abs(lastVolume1 - lastVolume2);
-            // On calcule le pourcentage par rapport au volume le plus élevé pour être plus juste
-            const maxVolume = Math.max(lastVolume1, lastVolume2);
-            
-            if (maxVolume > 0) { // Évite la division par zéro
-                const diffPercent = (difference / maxVolume) * 100;
-
-                if (diffPercent > alertThresholdPercent) {
-                    alertContainer.classList.add('alert-visible');
-                } else {
-                    alertContainer.classList.remove('alert-visible');
+                // Si la différence est dans la tolérance ET qu'elle est la plus petite trouvée jusqu'ici
+                if (timeDiff <= tableSyncToleranceSeconds && timeDiff < smallestDifference) {
+                    smallestDifference = timeDiff;
+                    bestMatch = point2;
                 }
-            }
-        } else {
-            // S'il manque une des deux valeurs, on ne montre pas d'alerte
-            alertContainer.classList.remove('alert-visible');
-        }
+            });
+
+            // On crée la ligne du tableau
+            aligned.push({
+                timestamp: point1.timestamp,
+                volume1: point1.volume,
+                volume2: bestMatch ? bestMatch.volume : null // On utilise la correspondance ou null
+            });
+        });
+
+        return aligned;
     }
 
-    // Le reste des fonctions (alignData, displayDataInTable, updateChart) est INCHANGÉ
-    // ... (copier-coller le reste des fonctions depuis le script précédent)
-    function alignData(data1, data2) {
+
+    // --- ANCIEN ALGORITHME D'ALIGNEMENT (maintenant renommé, utilisé UNIQUEMENT pour le graphique) ---
+    function alignDataForChart(data1, data2) {
         if (data1.length === 0 && data2.length === 0) return [];
         let result = [], index1 = 0, index2 = 0, lastVolume1 = null, lastVolume2 = null;
         while (index1 < data1.length || index2 < data2.length) {
@@ -129,20 +114,59 @@ document.addEventListener('DOMContentLoaded', function() {
         return result;
     }
 
+
+    // --- LES AUTRES FONCTIONS RESTENT LES MÊMES ---
+    
+    function updateSummaryAndAlerts(data1, data2) {
+        const lastDataPoint1 = data1.length > 0 ? data1[data1.length - 1] : null;
+        const lastDataPoint2 = data2.length > 0 ? data2[data2.length - 1] : null;
+
+        const lastVolume1 = lastDataPoint1 ? lastDataPoint1.volume : null;
+        const lastVolume2 = lastDataPoint2 ? lastDataPoint2.volume : null;
+        
+        const lastTimestamp1 = lastDataPoint1 ? lastDataPoint1.timestamp : 0;
+        const lastTimestamp2 = lastDataPoint2 ? lastDataPoint2.timestamp : 0;
+        const mostRecentTimestamp = Math.max(lastTimestamp1, lastTimestamp2);
+
+        if (mostRecentTimestamp > 0) {
+            const lastDate = new Date(mostRecentTimestamp * 1000);
+            const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'UTC' };
+            summaryTitle.textContent = `Synthèse à ${lastDate.toLocaleString('fr-FR', options)} (UTC)`;
+        }
+
+        summaryVolume1.textContent = lastVolume1 !== null ? `${lastVolume1.toFixed(3)} L` : '--.-- L';
+        summaryVolume2.textContent = lastVolume2 !== null ? `${lastVolume2.toFixed(3)} L` : '--.-- L';
+        
+        if (lastVolume1 !== null && lastVolume2 !== null) {
+            const difference = Math.abs(lastVolume1 - lastVolume2);
+            const maxVolume = Math.max(lastVolume1, lastVolume2);
+            if (maxVolume > 0) {
+                const diffPercent = (difference / maxVolume) * 100;
+                if (diffPercent > alertThresholdPercent) {
+                    alertContainer.classList.add('alert-visible');
+                } else {
+                    alertContainer.classList.remove('alert-visible');
+                }
+            }
+        } else {
+            alertContainer.classList.remove('alert-visible');
+        }
+    }
+
     function displayDataInTable(data) {
         tableBody.innerHTML = '';
-        if (data.length === 0) { statusText.textContent = 'Aucune donnée synchronisée à afficher.'; return; }
-        const reversedData = [...data].reverse();
+        if (data.length === 0) { statusText.textContent = 'Aucune donnée de la GesBox 1 à afficher.'; return; }
+        const reversedData = [...data].reverse(); // On affiche les plus récentes en premier
         reversedData.forEach(item => {
             const row = document.createElement('tr');
-            const v1 = item.volume1 !== null ? item.volume1 : 0;
-            const v2 = item.volume2 !== null ? item.volume2 : 0;
-            const diffVolume = (item.volume1 !== null && item.volume2 !== null) ? (v1 - v2).toFixed(3) : 'N/A';
-            const diffPercent = (v1 > 0 && item.volume2 !== null) ? (((v1 - v2) / v1) * 100).toFixed(2) + '%' : 'N/A';
+            const v1 = item.volume1;
+            const v2 = item.volume2;
+            const diffVolume = (v1 !== null && v2 !== null) ? (v1 - v2).toFixed(3) : 'N/A';
+            const diffPercent = (v1 > 0 && v2 !== null) ? (((v1 - v2) / v1) * 100).toFixed(2) + '%' : 'N/A';
             const date = new Date(item.timestamp * 1000);
             const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'UTC' };
             const formattedTime = date.toLocaleString('fr-FR', options);
-            row.innerHTML = `<td>${formattedTime} (UTC)</td><td>${item.volume1 !== null ? item.volume1.toFixed(3) : '---'}</td><td>${item.volume2 !== null ? item.volume2.toFixed(3) : '---'}</td><td>${diffVolume}</td><td>${diffPercent}</td>`;
+            row.innerHTML = `<td>${formattedTime} (UTC)</td><td>${v1.toFixed(3)}</td><td>${v2 !== null ? v2.toFixed(3) : '---'}</td><td>${diffVolume}</td><td>${diffPercent}</td>`;
             tableBody.appendChild(row);
         });
     }
@@ -169,4 +193,3 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchDataAndDisplay();
     setInterval(fetchDataAndDisplay, 30000); 
 });
-
