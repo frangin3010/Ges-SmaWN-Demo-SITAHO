@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Marge de tolérance en pourcentage pour l'alerte
     const alertThresholdPercent = 8.0; 
 
-    // Intervalle de temps pour la synchronisation du TABLEAU (comme tu l'as demandé)
+    // Intervalle de temps pour la synchronisation du TABLEAU et du GRAPHIQUE
     const tableSyncToleranceSeconds = 16; 
 
     // --- ÉLÉMENTS DE LA PAGE ---
@@ -35,12 +35,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const dataGesbox1 = rawData.filter(d => d.gesBoxId === 'GesBox1');
             const dataGesbox2 = rawData.filter(d => d.gesBoxId === 'GesBox2');
 
-            // NOUVELLE LOGIQUE : On utilise deux alignements différents
-            const dataForChart = alignDataForChart(dataGesbox1, dataGesbox2);
-            const dataForTable = alignDataForTable(dataGesbox1, dataGesbox2);
+            // --- SIMPLIFICATION MAJEURE ---
+            // On utilise UN SEUL jeu de données synchronisées pour le tableau ET le graphique
+            const synchronizedData = alignDataForTable(dataGesbox1, dataGesbox2);
 
-            displayDataInTable(dataForTable);
-            updateChart(dataForChart);
+            // On envoie ces mêmes données aux deux fonctions d'affichage
+            displayDataInTable(synchronizedData);
+            updateChart(synchronizedData); 
+            
+            // La synthèse utilise toujours les données brutes pour avoir la dernière valeur de chaque capteur
             updateSummaryAndAlerts(dataGesbox1, dataGesbox2);
 
             const options = { dateStyle: 'long', timeStyle: 'medium' };
@@ -52,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // --- NOUVEL ALGORITHME D'ALIGNEMENT POUR LE TABLEAU (selon ta logique) ---
+    // --- L'UNIQUE ALGORITHME D'ALIGNEMENT (pour le tableau ET le graphique) ---
     function alignDataForTable(data1, data2) {
         const aligned = [];
 
@@ -82,38 +85,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         return aligned;
     }
-
-
-    // --- ANCIEN ALGORITHME D'ALIGNEMENT (maintenant renommé, utilisé UNIQUEMENT pour le graphique) ---
-    function alignDataForChart(data1, data2) {
-        if (data1.length === 0 && data2.length === 0) return [];
-        let result = [], index1 = 0, index2 = 0, lastVolume1 = null, lastVolume2 = null;
-        while (index1 < data1.length || index2 < data2.length) {
-            const point1 = index1 < data1.length ? data1[index1] : null;
-            const point2 = index2 < data2.length ? data2[index2] : null;
-            if (point1 && point2) {
-                if (point1.timestamp <= point2.timestamp) {
-                    lastVolume1 = point1.volume;
-                    result.push({ timestamp: point1.timestamp, volume1: lastVolume1, volume2: lastVolume2 });
-                    index1++;
-                } else {
-                    lastVolume2 = point2.volume;
-                    result.push({ timestamp: point2.timestamp, volume1: lastVolume1, volume2: lastVolume2 });
-                    index2++;
-                }
-            } else if (point1) {
-                lastVolume1 = point1.volume;
-                result.push({ timestamp: point1.timestamp, volume1: lastVolume1, volume2: lastVolume2 });
-                index1++;
-            } else if (point2) {
-                lastVolume2 = point2.volume;
-                result.push({ timestamp: point2.timestamp, volume1: lastVolume1, volume2: lastVolume2 });
-                index2++;
-            }
-        }
-        return result;
-    }
-
 
     // --- LES AUTRES FONCTIONS RESTENT LES MÊMES ---
     
@@ -156,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function displayDataInTable(data) {
         tableBody.innerHTML = '';
         if (data.length === 0) { statusText.textContent = 'Aucune donnée de la GesBox 1 à afficher.'; return; }
-        const reversedData = [...data].reverse(); // On affiche les plus récentes en premier
+        const reversedData = [...data].reverse(); 
         reversedData.forEach(item => {
             const row = document.createElement('tr');
             const v1 = item.volume1;
@@ -173,13 +144,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateChart(data) {
         if (!chartCanvas) return;
+        // L'axe X du graphique sera basé sur les timestamps de la GesBox 1 (notre référence)
         const labels = data.map(item => new Date(item.timestamp * 1000).toLocaleTimeString('fr-FR', {timeZone: 'UTC'}));
         const gesbox1Data = data.map(item => item.volume1);
-        const gesbox2Data = data.map(item => item.volume2);
+        const gesbox2Data = data.map(item => item.volume2); // Cette liste contiendra des 'null' là où il n'y a pas de correspondance
+
         const chartData = {
             labels: labels,
-            datasets: [{ label: 'Volume Cumulé GesBox 1 (L)', data: gesbox1Data, borderColor: 'rgb(54, 162, 235)', backgroundColor: 'rgba(54, 162, 235, 0.5)', spanGaps: true, tension: 0.1 }, { label: 'Volume Cumulé GesBox 2 (L)', data: gesbox2Data, borderColor: 'rgb(255, 99, 132)', backgroundColor: 'rgba(255, 99, 132, 0.5)', spanGaps: true, tension: 0.1 }]
+            datasets: [
+                { 
+                    label: 'Volume Cumulé GesBox 1 (L)', 
+                    data: gesbox1Data, 
+                    borderColor: 'rgb(54, 162, 235)', 
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)', 
+                    tension: 0.1 
+                }, 
+                { 
+                    label: 'Volume Cumulé GesBox 2 (L)', 
+                    data: gesbox2Data, 
+                    borderColor: 'rgb(255, 99, 132)', 
+                    backgroundColor: 'rgba(255, 99, 132, 0.5)', 
+                    spanGaps: true, // Cette option relie les points par-dessus les "trous" (valeurs null)
+                    tension: 0.1 
+                }
+            ]
         };
+
         if (!volumeChart) {
             const config = { type: 'line', data: chartData, options: { responsive: true, animation: false, plugins: { legend: { position: 'top' }, title: { display: true, text: 'Suivi des Volumes Cumulés' } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Volume (L)' } }, x: { title: { display: true, text: 'Heure (UTC)' } } } } };
             volumeChart = new Chart(chartCanvas, config);
